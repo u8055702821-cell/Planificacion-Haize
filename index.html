@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Obras - Control por Voz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 28px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            color: #718096;
+            margin-bottom: 20px;
+        }
+
+        /* Controles principales */
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-voice {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-voice:hover:not(:disabled) {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        .btn-voice.listening {
+            background: #ef4444;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .btn-manual {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-manual:hover {
+            background: #059669;
+        }
+
+        .btn-export {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-refresh {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        /* Transcript */
+        .transcript {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .transcript.active {
+            display: block;
+        }
+
+        .transcript-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 5px;
+        }
+
+        .transcript-text {
+            color: #1f2937;
+            font-weight: 500;
+        }
+
+        /* Ejemplos */
+        .examples {
+            background: #eff6ff;
+            border: 2px solid #bfdbfe;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .examples h3 {
+            color: #1e40af;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .examples ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .examples li {
+            color: #1e3a8a;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .examples strong {
+            color: #1e40af;
+        }
+
+        /* Formulario manual */
+        .manual-form {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .manual-form.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .worker-select {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 2px solid #d1d5db;
+            border-radius: 6px;
+            padding: 10px;
+            background: white;
+        }
+
+        .worker-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px;
+            margin-bottom: 5px;
+        }
+
+        .worker-checkbox input[type="checkbox"] {
+            width: auto;
+        }
+
+        .form-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-submit {
+            background: #10b981;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-cancel {
+            background: #6b7280;
+            color: white;
+        }
+
+        /* Selector de colores */
+        .color-selector-container {
+            margin-bottom: 15px;
+        }
+
+        .color-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.selected {
+            border-color: #1f2937;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #1f2937;
+        }
+
+        /* Tabla calendario */
+        .calendar-wrapper {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1200px;
+        }
+
+        th, td {
+            border: 1px solid #d1d5db;
+            padding: 10px;
+            text-align: center;
+        }
+
+        th {
+            background: #f3f4f6;
+            font-weight: 600;
+            color: #374151;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .worker-cell {
+            background: #d1fae5;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            min-width: 200px;
+        }
+
+        .worker-name {
+            font-size: 14px;
+            color: #065f46;
+        }
+
+        .worker-surname {
+            font-size: 12px;
+            color: #047857;
+        }
+
+        .worker-company {
+            font-size: 11px;
+            color: #059669;
+            font-weight: normal;
+        }
+
+        .date-header {
+            min-width: 100px;
+        }
+
+        .date-day {
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .date-number {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        .date-month {
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .today {
+            background: #dbeafe !important;
+        }
+
+        .assignment-cell {
+            position: relative;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .assignment {
+            background: #3b82f6;
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            position: relative;
+        }
+
+        .assignment-delete {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #ef4444;
+            border: none;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: none;
+            padding: 0;
+        }
+
+        .assignment:hover .assignment-delete {
+            display: block;
+        }
+
+        /* Navegación calendario */
+        .calendar-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        .calendar-nav h2 {
+            color: #1f2937;
+            font-size: 20px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-nav {
+            background: #e5e7eb;
+            color: #374151;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .btn-nav:hover {
+            background: #d1d5db;
+        }
+
+        .btn-today {
+            background: #3b82f6;
+            color: white;
+        }
+
+        /* Logs */
+        .logs {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 4px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .log-success {
+            background: #d1fae5;
+            border-color: #10b981;
+            color: #065f46;
+        }
+
+        .log-error {
+            background: #fee2e2;
+            border-color: #ef4444;
+            color: #991b1b;
+        }
+
+        .log-info {
+            background: #dbeafe;
+            border-color: #3b82f6;
+            color: #1e3a8a;
+        }
+
+        .log-time {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .processing {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            color: #3b82f6;
+            font-weight: 600;
+            padding: 10px;
+            background: #eff6ff;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .processing.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #bfdbfe;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Lista de trabajadores */
+        .workers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .worker-card {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .worker-info {
+            flex: 1;
+        }
+
+        .worker-card-name {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .worker-card-company {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 22px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .workers-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .calendar-nav {
+                flex-direction: column;
+            }
+
+            .nav-buttons {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="card">
+            <h1>
+                📅 Gestión de Obras y Trabajadores
+            </h1>
+            <p class="subtitle">Control por voz e introducción manual - Sincronizado en tiempo real</p>
+
+            <!-- Controles principales -->
+            <div class="controls">
+                <button class="btn-voice" id="btnVoice">
+                    🎤 Activar micrófono
+                </button>
+                <button class="btn-manual" id="btnManual">
+                    ✏️ Añadir obra manualmente
+                </button>
+                <button class="btn-export" id="btnExport">
+                    💾 Exportar datos
+                </button>
+                <button class="btn-refresh" id="btnRefresh">
+                    🔄 Recargar datos
+                </button>
+            </div>
+
+            <!-- Procesando -->
+            <div class="processing" id="processing">
+                <div class="spinner"></div>
+                <span>Procesando comando...</span>
+            </div>
+
+            <!-- Transcript -->
+            <div class="transcript" id="transcript">
+                <div class="transcript-label">Último comando:</div>
+                <div class="transcript-text" id="transcriptText"></div>
+            </div>
+
+            <!-- Ejemplos -->
+            <div class="examples">
+                <h3>📢 Ejemplos de comandos de voz:</h3>
+                <ul>
+                    <li>• "Asocia la obra <strong>Nippon tubería oxígeno</strong> a <strong>Ángel y Antonio</strong> entre los días <strong>5 y 15 de mayo color rojo</strong>"</li>
+                    <li>• "Asigna <strong>Arcelor montaje</strong> a <strong>Aitor</strong> del <strong>10 al 20 de abril color azul</strong>"</li>
+                    <li>• "Pon la obra <strong>Sidenor mantenimiento</strong> a <strong>Igor y Joseba</strong> del <strong>1 al 30 de junio en verde</strong>"</li>
+                    <li>• <strong>Colores disponibles:</strong> rojo, azul, verde, amarillo, morado, rosa, turquesa, naranja</li>
+                </ul>
+            </div>
+
+            <!-- Formulario manual -->
+            <div class="manual-form" id="manualForm">
+                <h3 style="margin-bottom: 15px;">📝 Añadir obra manualmente</h3>
+                
+                <div class="form-group">
+                    <label>Nombre de la obra:</label>
+                    <input type="text" id="obraInput" placeholder="Ej: Nippon tubería oxígeno">
+                </div>
+
+                <div class="form-group">
+                    <label>Selecciona trabajadores:</label>
+                    <div class="worker-select" id="workerSelect"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Fecha de inicio:</label>
+                    <input type="date" id="fechaInicio">
+                </div>
+
+                <div class="form-group">
+                    <label>Fecha de fin:</label>
+                    <input type="date" id="fechaFin">
+                </div>
+
+                <div class="form-group color-selector-container">
+                    <label>Selecciona un color:</label>
+                    <div class="color-selector" id="colorSelector"></div>
+                </div>
+
+                <div class="form-buttons">
+                    <button class="btn-submit" id="btnSubmitForm">
+                        ✅ Crear asignación
+                    </button>
+                    <button class="btn-cancel" id="btnCancelForm">
+                        ❌ Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendario -->
+        <div class="card">
+            <div class="calendar-nav">
+                <h2>📊 Calendario de obras</h2>
+                <div class="nav-buttons">
+                    <button class="btn-nav" id="btnPrev">← 2 semanas atrás</button>
+                    <button class="btn-nav btn-today" id="btnToday">📍 Hoy</button>
+                    <button class="btn-nav" id="btnNext">2 semanas adelante →</button>
+                </div>
+            </div>
+
+            <div class="calendar-wrapper">
+                <table id="calendar"></table>
+            </div>
+        </div>
+
+        <!-- Trabajadores -->
+        <div class="card">
+            <h2 style="margin-bottom: 15px;">👥 Trabajadores (<span id="workerCount">0</span>)</h2>
+            <div class="workers-grid" id="workersGrid"></div>
+        </div>
+
+        <!-- Logs -->
+        <div class="card">
+            <h2 style="margin-bottom: 15px;">📋 Registro de actividad</h2>
+            <div class="logs" id="logs"></div>
+        </div>
+    </div>
+
+    <script>
+        // Estado global
+        let trabajadores = [];
+        let asignaciones = [];
+        let currentWeek = new Date();
+        let recognition = null;
+        let isListening = false;
+        let selectedColor = '#3b82f6'; // Color seleccionado por defecto (azul)
+
+        // Trabajadores iniciales
+        const trabajadoresIniciales = [
+            // HAIZE EDERRA
+            { id: '1', empresa: 'HAIZE EDERRA', nombre: 'AITOR', apellidos: 'LÓPEZ ALONSO' },
+            { id: '2', empresa: 'HAIZE EDERRA', nombre: 'ÁNGEL', apellidos: 'LÓPEZ ALONSO' },
+            { id: '3', empresa: 'HAIZE EDERRA', nombre: 'ANTONIO MANUEL', apellidos: 'GONZÁLEZ BLANCO' },
+            { id: '4', empresa: 'HAIZE EDERRA', nombre: 'BAYTIR', apellidos: 'KA' },
+            { id: '5', empresa: 'HAIZE EDERRA', nombre: 'JOSÉ ANTONIO', apellidos: 'GIL TABARES' },
+            { id: '6', empresa: 'HAIZE EDERRA', nombre: 'JUAN LUIS', apellidos: 'TEJERINA VELASCO' },
+            { id: '7', empresa: 'HAIZE EDERRA', nombre: 'LEONARDO', apellidos: 'CEBALLOS BELLIDO' },
+            { id: '8', empresa: 'HAIZE EDERRA', nombre: 'MARCO ALEXANDRE', apellidos: 'ALELUIA CARVALHO' },
+            { id: '9', empresa: 'HAIZE EDERRA', nombre: 'VALMORE MANUEL', apellidos: 'MORALES SERRANO' },
+            { id: '10', empresa: 'HAIZE EDERRA', nombre: 'VÍCTOR EDGAR', apellidos: 'CORILLA RODRÍGUEZ' },
+            // INST. ARANETA
+            { id: '11', empresa: 'INST. ARANETA', nombre: 'CÁNDIDO', apellidos: 'CALDERÓN FERNÁNDEZ' },
+            { id: '12', empresa: 'INST. ARANETA', nombre: 'FRANCISCO JAVIER', apellidos: 'GÁRATE ZUBIZARRETA' },
+            { id: '13', empresa: 'INST. ARANETA', nombre: 'IGOR', apellidos: 'GÓMEZ ARRIOLA' },
+            { id: '14', empresa: 'INST. ARANETA', nombre: 'JOSEBA', apellidos: 'CONDE MURILLO' },
+            { id: '15', empresa: 'INST. ARANETA', nombre: 'MIKEL', apellidos: 'CARRACEDO EIZAGUIRRE' }
+        ];
+
+        // Colores para obras con nombres en español
+        const colores = {
+            'rojo': '#ef4444',
+            'azul': '#3b82f6',
+            'verde': '#10b981',
+            'amarillo': '#f59e0b',
+            'morado': '#8b5cf6',
+            'rosa': '#ec4899',
+            'turquesa': '#14b8a6',
+            'naranja': '#f97316'
+        };
+        const coloresArray = Object.values(colores);
+        let colorIndex = 0;
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initApp();
+            setupEventListeners();
+            setupVoiceRecognition();
+            setupAutoSync(); // Sincronización automática
+        });
+
+        // CORRECCIÓN 2: Sincronización automática entre dispositivos
+        function setupAutoSync() {
+            setInterval(async () => {
+                try {
+                    const assignmentsData = await window.storage.get('asignaciones', true);
+                    if (assignmentsData?.value) {
+                        const newAssignments = JSON.parse(assignmentsData.value);
+                        // Solo actualizar si hay cambios
+                        if (JSON.stringify(newAssignments) !== JSON.stringify(asignaciones)) {
+                            asignaciones = newAssignments;
+                            renderCalendar();
+                            console.log('Datos sincronizados automáticamente');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error en sincronización automática:', error);
+                }
+            }, 3000); // Verificar cada 3 segundos
+        }
+
+        async function initApp() {
+            try {
+                const workersData = await window.storage.get('trabajadores', true);
+                const assignmentsData = await window.storage.get('asignaciones', true);
+                
+                if (workersData?.value) {
+                    trabajadores = JSON.parse(workersData.value);
+                } else {
+                    trabajadores = trabajadoresIniciales;
+                    await saveWorkers();
+                }
+
+                if (assignmentsData?.value) {
+                    asignaciones = JSON.parse(assignmentsData.value);
+                }
+
+                renderAll();
+                addLog('✅ Aplicación cargada correctamente', 'success');
+            } catch (error) {
+                trabajadores = trabajadoresIniciales;
+                await saveWorkers();
+                renderAll();
+                addLog('✅ Aplicación iniciada con trabajadores por defecto', 'info');
+            }
+        }
+
+        async function saveWorkers() {
+            try {
+                await window.storage.set('trabajadores', JSON.stringify(trabajadores), true);
+            } catch (error) {
+                console.error('Error guardando trabajadores:', error);
+            }
+        }
+
+        async function saveAssignments() {
+            try {
+                await window.storage.set('asignaciones', JSON.stringify(asignaciones), true);
+            } catch (error) {
+                console.error('Error guardando asignaciones:', error);
+            }
+        }
+
+        function setupEventListeners() {
+            document.getElementById('btnVoice').addEventListener('click', toggleVoice);
+            document.getElementById('btnManual').addEventListener('click', showManualForm);
+            document.getElementById('btnExport').addEventListener('click', exportData);
+            document.getElementById('btnRefresh').addEventListener('click', refreshData);
+            document.getElementById('btnCancelForm').addEventListener('click', hideManualForm);
+            document.getElementById('btnSubmitForm').addEventListener('click', submitManualForm);
+            document.getElementById('btnPrev').addEventListener('click', () => navigateWeek(-14));
+            document.getElementById('btnToday').addEventListener('click', () => { currentWeek = new Date(); renderCalendar(); });
+            document.getElementById('btnNext').addEventListener('click', () => navigateWeek(14));
+        }
+
+        function setupVoiceRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'es-ES';
+
+                recognition.onresult = (event) => {
+                    const current = event.resultIndex;
+                    const transcript = event.results[current][0].transcript;
+                    
+                    document.getElementById('transcriptText').textContent = transcript;
+                    document.getElementById('transcript').classList.add('active');
+                    
+                    if (event.results[current].isFinal) {
+                        processVoiceCommand(transcript);
+                    }
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('Error de reconocimiento:', event.error);
+                    stopListening();
+                    addLog('❌ Error de reconocimiento: ' + event.error, 'error');
+                };
+
+                recognition.onend = () => {
+                    stopListening();
+                };
+            } else {
+                addLog('❌ Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.', 'error');
+            }
+        }
+
+        function toggleVoice() {
+            if (isListening) {
+                stopListening();
+            } else {
+                startListening();
+            }
+        }
+
+        async function startListening() {
+            if (!recognition) {
+                addLog('❌ Reconocimiento de voz no disponible', 'error');
+                return;
+            }
+
+            try {
+                // Solicitar permisos de micrófono explícitamente
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop()); // Detener el stream, solo necesitábamos el permiso
+                
+                recognition.start();
+                isListening = true;
+                document.getElementById('btnVoice').classList.add('listening');
+                document.getElementById('btnVoice').innerHTML = '🔴 Escuchando...';
+                addLog('🎤 Micrófono activado - di tu comando', 'info');
+            } catch (error) {
+                console.error('Error al solicitar permisos:', error);
+                addLog('❌ Permisos de micrófono denegados. Por favor, permite el acceso al micrófono en la configuración de tu navegador.', 'error');
+            }
+        }
+
+        function stopListening() {
+            if (recognition && isListening) {
+                recognition.stop();
+            }
+            isListening = false;
+            document.getElementById('btnVoice').classList.remove('listening');
+            document.getElementById('btnVoice').innerHTML = '🎤 Activar micrófono';
+        }
+
+        async function processVoiceCommand(command) {
+            document.getElementById('processing').classList.add('active');
+            addLog('⏳ Procesando: "' + command + '"', 'info');
+
+            try {
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 1000,
+                        messages: [{
+                            role: 'user',
+                            content: `Analiza este comando de voz para gestión de obras y trabajadores. Devuelve SOLO un JSON sin explicaciones ni markdown.
+
+Comando: "${command}"
+
+Trabajadores disponibles: ${trabajadores.map(t => t.nombre + ' ' + t.apellidos).join(', ')}
+
+Colores disponibles: rojo, azul, verde, amarillo, morado, rosa, turquesa, naranja
+
+Extrae:
+- accion: "asociar_obra" | "eliminar_obra" | "modificar_obra"
+- obra: nombre de la obra (string)
+- trabajadores: array de nombres de trabajadores mencionados (busca coincidencias parciales)
+- fecha_inicio: fecha en formato YYYY-MM-DD (si no se menciona año, usa 2026)
+- fecha_fin: fecha en formato YYYY-MM-DD (si no se menciona año, usa 2026)
+- color: nombre del color si se menciona (debe ser uno de: rojo, azul, verde, amarillo, morado, rosa, turquesa, naranja). Si no se menciona, devuelve null.
+
+Interpreta nombres de forma flexible. Por ejemplo:
+- "Ángel" puede coincidir con "ÁNGEL LÓPEZ ALONSO"
+- "Antonio" puede coincidir con "ANTONIO MANUEL GONZÁLEZ BLANCO"
+- "Igor y Joseba" puede coincidir con "IGOR GÓMEZ ARRIOLA" y "JOSEBA CONDE MURILLO"
+- "color rojo" o "en rojo" indica que el color debe ser rojo
+
+Responde SOLO con el JSON.`
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                const textContent = data.content.find(item => item.type === 'text')?.text || '';
+                
+                const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) {
+                    throw new Error('No se pudo extraer JSON de la respuesta');
+                }
+                
+                const parsed = JSON.parse(jsonMatch[0]);
+                await executeAction(parsed);
+                
+            } catch (error) {
+                console.error('Error procesando comando:', error);
+                addLog('❌ Error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('processing').classList.remove('active');
+            }
+        }
+
+        async function executeAction(action) {
+            if (action.accion === 'asociar_obra') {
+                // Buscar trabajadores por coincidencia de nombre
+                const workerIds = trabajadores
+                    .filter(t => {
+                        const fullName = (t.nombre + ' ' + t.apellidos).toLowerCase();
+                        return action.trabajadores.some(nombre => {
+                            const searchName = nombre.toLowerCase();
+                            return fullName.includes(searchName) || searchName.includes(t.nombre.toLowerCase());
+                        });
+                    })
+                    .map(t => t.id);
+
+                if (workerIds.length === 0) {
+                    addLog('❌ No se encontraron trabajadores con esos nombres', 'error');
+                    return;
+                }
+
+                // CORRECCIÓN 4: Usar color especificado o color por defecto
+                let color;
+                if (action.color && colores[action.color.toLowerCase()]) {
+                    color = colores[action.color.toLowerCase()];
+                    addLog(`🎨 Color seleccionado: ${action.color}`, 'info');
+                } else {
+                    color = coloresArray[colorIndex % coloresArray.length];
+                    colorIndex++;
+                }
+
+                workerIds.forEach(workerId => {
+                    asignaciones.push({
+                        id: Date.now() + Math.random(),
+                        trabajadorId: workerId,
+                        obra: action.obra,
+                        fechaInicio: action.fecha_inicio,
+                        fechaFin: action.fecha_fin,
+                        color: color
+                    });
+                });
+
+                await saveAssignments();
+                renderAll();
+                addLog('✅ Obra "' + action.obra + '" asociada a ' + workerIds.length + ' trabajador(es)', 'success');
+                
+            } else if (action.accion === 'eliminar_obra') {
+                asignaciones = asignaciones.filter(a => 
+                    !a.obra.toLowerCase().includes(action.obra.toLowerCase())
+                );
+                await saveAssignments();
+                renderAll();
+                addLog('✅ Obra "' + action.obra + '" eliminada', 'success');
+            }
+        }
+
+        function showManualForm() {
+            document.getElementById('manualForm').classList.add('active');
+            renderWorkerSelect();
+            renderColorSelector(); // CORRECCIÓN 4: Renderizar selector de colores
+            
+            // Establecer fechas por defecto
+            const today = new Date();
+            document.getElementById('fechaInicio').valueAsDate = today;
+            const nextWeek = new Date(today);
+            nextWeek.setDate(today.getDate() + 7);
+            document.getElementById('fechaFin').valueAsDate = nextWeek;
+        }
+
+        // CORRECCIÓN 4: Función para renderizar el selector de colores
+        function renderColorSelector() {
+            const container = document.getElementById('colorSelector');
+            container.innerHTML = '';
+            
+            Object.entries(colores).forEach(([nombre, hex]) => {
+                const div = document.createElement('div');
+                div.className = 'color-option';
+                div.style.backgroundColor = hex;
+                div.title = nombre.charAt(0).toUpperCase() + nombre.slice(1);
+                
+                // Marcar el color azul como seleccionado por defecto
+                if (hex === selectedColor) {
+                    div.classList.add('selected');
+                }
+                
+                div.addEventListener('click', () => {
+                    // Remover selección de todos los colores
+                    document.querySelectorAll('.color-option').forEach(el => {
+                        el.classList.remove('selected');
+                    });
+                    // Marcar este color como seleccionado
+                    div.classList.add('selected');
+                    selectedColor = hex;
+                    addLog(`🎨 Color seleccionado: ${nombre}`, 'info');
+                });
+                
+                container.appendChild(div);
+            });
+        }
+
+        function hideManualForm() {
+            document.getElementById('manualForm').classList.remove('active');
+            document.getElementById('obraInput').value = '';
+        }
+
+        function renderWorkerSelect() {
+            const container = document.getElementById('workerSelect');
+            container.innerHTML = '';
+            
+            trabajadores.forEach(worker => {
+                const div = document.createElement('div');
+                div.className = 'worker-checkbox';
+                div.innerHTML = `
+                    <input type="checkbox" id="worker-${worker.id}" value="${worker.id}">
+                    <label for="worker-${worker.id}">${worker.nombre} ${worker.apellidos} (${worker.empresa})</label>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function submitManualForm() {
+            const obra = document.getElementById('obraInput').value.trim();
+            const fechaInicio = document.getElementById('fechaInicio').value;
+            const fechaFin = document.getElementById('fechaFin').value;
+            
+            if (!obra || !fechaInicio || !fechaFin) {
+                addLog('❌ Por favor completa todos los campos', 'error');
+                return;
+            }
+
+            const selectedWorkers = [];
+            trabajadores.forEach(worker => {
+                const checkbox = document.getElementById('worker-' + worker.id);
+                if (checkbox && checkbox.checked) {
+                    selectedWorkers.push(worker.id);
+                }
+            });
+
+            if (selectedWorkers.length === 0) {
+                addLog('❌ Selecciona al menos un trabajador', 'error');
+                return;
+            }
+
+            // CORRECCIÓN 4: Usar el color seleccionado en lugar de colorIndex
+            const color = selectedColor;
+
+            selectedWorkers.forEach(workerId => {
+                asignaciones.push({
+                    id: Date.now() + Math.random(),
+                    trabajadorId: workerId,
+                    obra: obra,
+                    fechaInicio: fechaInicio,
+                    fechaFin: fechaFin,
+                    color: color
+                });
+            });
+
+            await saveAssignments();
+            renderAll();
+            hideManualForm();
+            addLog('✅ Obra "' + obra + '" creada para ' + selectedWorkers.length + ' trabajador(es)', 'success');
+        }
+
+        async function deleteAssignment(id) {
+            if (confirm('¿Eliminar esta asignación?')) {
+                asignaciones = asignaciones.filter(a => a.id !== id);
+                await saveAssignments();
+                renderAll();
+                addLog('✅ Asignación eliminada', 'success');
+            }
+        }
+
+        function navigateWeek(days) {
+            currentWeek = new Date(currentWeek);
+            currentWeek.setDate(currentWeek.getDate() + days);
+            renderCalendar();
+        }
+
+        function exportData() {
+            const data = {
+                trabajadores,
+                asignaciones,
+                exportDate: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'gestion-obras-' + new Date().toISOString().split('T')[0] + '.json';
+            a.click();
+            addLog('✅ Datos exportados', 'success');
+        }
+
+        async function refreshData() {
+            await initApp();
+            addLog('🔄 Datos recargados', 'info');
+        }
+
+        function getDates() {
+            const dates = [];
+            const start = new Date(currentWeek);
+            start.setHours(0, 0, 0, 0);
+            
+            for (let i = 0; i < 14; i++) {
+                const date = new Date(start);
+                date.setDate(start.getDate() + i);
+                dates.push(date);
+            }
+            return dates;
+        }
+
+        function formatDate(date) {
+            const days = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
+            const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+            return {
+                day: days[date.getDay()],
+                date: date.getDate(),
+                month: months[date.getMonth()]
+            };
+        }
+
+        function getAssignmentsForDate(trabajadorId, date) {
+            return asignaciones.filter(a => {
+                const inicio = new Date(a.fechaInicio);
+                const fin = new Date(a.fechaFin);
+                const current = new Date(date);
+                current.setHours(0, 0, 0, 0);
+                inicio.setHours(0, 0, 0, 0);
+                fin.setHours(0, 0, 0, 0);
+                
+                return a.trabajadorId === trabajadorId && current >= inicio && current <= fin;
+            });
+        }
+
+        function renderCalendar() {
+            const dates = getDates();
+            const calendar = document.getElementById('calendar');
+            
+            let html = '<thead><tr><th class="worker-cell">TRABAJADOR</th>';
+            
+            dates.forEach(date => {
+                const formatted = formatDate(date);
+                const isToday = date.toDateString() === new Date().toDateString();
+                html += `
+                    <th class="date-header ${isToday ? 'today' : ''}">
+                        <div class="date-day">${formatted.day}</div>
+                        <div class="date-number">${formatted.date}</div>
+                        <div class="date-month">${formatted.month}</div>
+                    </th>
+                `;
+            });
+            
+            html += '</tr></thead><tbody>';
+            
+            trabajadores.forEach(worker => {
+                html += `
+                    <tr>
+                        <td class="worker-cell">
+                            <div class="worker-name">${worker.nombre}</div>
+                            <div class="worker-surname">${worker.apellidos}</div>
+                            <div class="worker-company">${worker.empresa}</div>
+                        </td>
+                `;
+                
+                dates.forEach(date => {
+                    const assignments = getAssignmentsForDate(worker.id, date);
+                    const isToday = date.toDateString() === new Date().toDateString();
+                    
+                    if (assignments.length > 0) {
+                        html += `
+                            <td class="assignment-cell ${isToday ? 'today' : ''}">
+                                <div class="assignments-stack">`;
+                        
+                        assignments.forEach(assignment => {
+                            html += `
+                                <div class="assignment" style="background-color: ${assignment.color}; margin-bottom: 4px;">
+                                    ${assignment.obra}
+                                    <button class="assignment-delete" onclick="deleteAssignment(${assignment.id})">×</button>
+                                </div>
+                            `;
+                        });
+                        
+                        html += `</div>
+                            </td>
+                        `;
+                    } else {
+                        html += `<td class="${isToday ? 'today' : ''}"></td>`;
+                    }
+                });
+                
+                html += '</tr>';
+            });
+            
+            html += '</tbody>';
+            calendar.innerHTML = html;
+        }
+
+        function renderWorkers() {
+            const container = document.getElementById('workersGrid');
+            document.getElementById('workerCount').textContent = trabajadores.length;
+            
+            container.innerHTML = trabajadores.map(worker => `
+                <div class="worker-card">
+                    <div class="worker-info">
+                        <div class="worker-card-name">${worker.nombre} ${worker.apellidos}</div>
+                        <div class="worker-card-company">${worker.empresa}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addLog(message, type = 'info') {
+            const log = {
+                id: Date.now(),
+                message,
+                type,
+                timestamp: new Date().toLocaleTimeString('es-ES')
+            };
+            
+            const logsContainer = document.getElementById('logs');
+            const logElement = document.createElement('div');
+            logElement.className = 'log-item log-' + type;
+            logElement.innerHTML = `
+                <span>${message}</span>
+                <span class="log-time">${log.timestamp}</span>
+            `;
+            
+            logsContainer.insertBefore(logElement, logsContainer.firstChild);
+            
+            // Mantener solo los últimos 20 logs
+            while (logsContainer.children.length > 20) {
+                logsContainer.removeChild(logsContainer.lastChild);
+            }
+        }
+
+        function renderAll() {
+            renderCalendar();
+            renderWorkers();
+        }
+    </script>
+</body>
+</html>
